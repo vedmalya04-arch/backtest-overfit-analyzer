@@ -20,8 +20,8 @@
     --color-red: #f43f5e;
     --color-amber: #f59e0b;
 
-    --btn-primary: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
-    --btn-primary-hover: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+    --btn-primary: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    --btn-primary-hover: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
 
     --tag-red-bg: rgba(244, 63, 94, 0.1);
     --tag-red-text: #fb7185;
@@ -226,8 +226,8 @@ body {
 }
 
 .btn-launch-terminal {
-    background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
-    border: none;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 8px;
     padding: 0.75rem 1.6rem;
     color: #ffffff;
@@ -237,13 +237,15 @@ body {
     align-items: center;
     gap: 0.6rem;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(14, 165, 233, 0.35);
+    box-shadow: 0 4px 20px rgba(30, 58, 138, 0.4);
     transition: all 0.2s ease;
 }
 
 .btn-launch-terminal:hover {
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+    border-color: rgba(59, 130, 246, 0.55);
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(14, 165, 233, 0.55);
+    box-shadow: 0 6px 25px rgba(30, 64, 175, 0.6);
 }
 
 .btn-arrow {
@@ -953,7 +955,7 @@ textarea:focus {
     width: 100%;
     background: var(--btn-primary);
     color: #ffffff;
-    border: none;
+    border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 8px;
     padding: 0.85rem 1rem;
     font-family: var(--font-sans);
@@ -967,13 +969,14 @@ textarea:focus {
     gap: 0.5rem;
     transition: all 0.2s ease;
     margin-top: 0.5rem;
-    box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+    box-shadow: 0 4px 15px rgba(30, 58, 138, 0.35);
 }
 
 .btn-execute-black:hover {
     background: var(--btn-primary-hover);
+    border-color: rgba(59, 130, 246, 0.55);
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+    box-shadow: 0 6px 20px rgba(30, 64, 175, 0.55);
 }
 
 .play-icon {
