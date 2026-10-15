@@ -1,0 +1,25 @@
+# Binaries and executables
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.app
+
+# Object files & build artifacts
+*.o
+*.obj
+*.a
+*.lib
+build/
+bin/
+cmake-build-*/
+.cache/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

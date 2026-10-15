@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantex | Institutional Overfitting Detection &amp; Deflated Sharpe Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- KaTeX Mathematical Typesetting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false});"></script>
+</head>
+
+<body>
+        <header class="navbar">
+        <div class="nav-left">
+            <a href="#landing" class="logo" id="brand-logo">Quantex</a>
+            <span class="nav-pipe">|</span>
+            <span class="nav-tagline-text">Institutional Overfitting Detection</span>
+        </div>
+    </header>
+
+        <div id="view-landing" class="view-container">
+                <section class="landing-hero-section">
+            <h1 class="hero-headline">Separating <span class="hl-green">mathematical skill</span> from lucky <span class="hl-red">coin flips</span></h1>
+
+            <div class="hero-actions-row">
+                <button class="btn-launch-terminal" id="btn-hero-launch">
+                    <span>Launch Quantex Terminal</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+                <a href="#proofs" class="btn-view-proofs">
+                    <span>View Methodology &amp; EVT Proofs</span>
+                </a>
+            </div>
+        </section>
+
+                <section class="landing-section" id="architecture">
+            <div class="section-center-pill">
+                <span class="pill-architecture">ARCHITECTURE</span>
+            </div>
+            <h2 class="landing-section-title">Bento Grid &amp; Quant Methodology</h2>
+            <p class="landing-section-subtitle">
+                Comprehensive statistical breakdown of false discoveries in multi-strategy backtesting.
+            </p>
+
+            <div class="bento-3-grid">
+                                <div class="bento-card">
+                    <div class="bento-num-label">01 • EVT THEOREM</div>
+                    <h3 class="bento-card-heading">Extreme Value Theory (EVT)</h3>
+                    <p class="bento-card-p">
+                        When you backtest N parameter combinations, the expected maximum Sharpe ratio grows with
+                        √(2·ln(N)) even if all candidate models have zero true alpha.
+                    </p>
+                    <div class="bento-card-bottom">
+                        <span class="bento-math-code">E[max SR] = √(V) · μ_N</span>
+                        <span class="bento-arrow-glyph">→</span>
+                    </div>
+                </div>
+
+                                <div class="bento-card">
+                    <div class="bento-num-label">02 • HIGHER MOMENTS</div>
+                    <h3 class="bento-card-heading">Skewness &amp; Kurtosis Correction</h3>
+                    <p class="bento-card-p">
+                        Financial returns are non-normal. Negative skewness (γ₃) and fat tails (γ₄) drastically inflate
+                        standard error and degrade true strategy significance.
+                    </p>
+                    <div class="bento-card-bottom">
+                        <span class="bento-math-code">Skewness (γ₃) &amp; Kurtosis (γ₄)</span>
+                        <span class="bento-arrow-glyph">→</span>
+                    </div>
+                </div>
+
+                                <div class="bento-card">
+                    <div class="bento-num-label">03 • PROBABILITY THRESHOLD</div>
+                    <h3 class="bento-card-heading">Deflated Probability (DSR)</h3>
+                    <p class="bento-card-p">
+                        The final output is a deflated p-value (DSR ∈ [0, 1]) measuring the probability that the
+                        strategy possesses genuine alpha after selection bias correction.
+                    </p>
+                    <div class="bento-card-bottom">
+                        <span class="bento-math-code">DSR ≥ 0.95 (95% Confidence)</span>
+                        <span class="bento-arrow-glyph">→</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+                <div class="section-divider-line"></div>
+
+                <section class="landing-section" id="false-discovery">
+            <div class="section-center-pill">
+                <span class="pill-selection-bias">SELECTION BIAS REALITY CHECK</span>
+            </div>
+            <h2 class="landing-section-title">It's Not Curve Fitting. It's Mathematical Illusion.</h2>
+            <p class="landing-section-subtitle">
+                Why 92% of backtested high-Sharpe strategies experience structural drawdowns in live production capital.
+            </p>
+
+            <div class="comparison-dual-grid">
+                                <div class="comparison-card naive-card">
+                    <div class="comp-header-row">
+                        <span class="comp-label-red">NAIVE QUANT BENCHMARK</span>
+                        <span class="badge-vulnerable">Vulnerable to P-Hacking</span>
+                    </div>
+                    <h3 class="comp-main-title">The "Best Model" Selection Fallacy</h3>
+                    <p class="comp-main-desc">
+                        A research desk runs 10,000 backtests across grid search hyperparameters. By chance alone, the
+                        maximum Sharpe observed will be over 3.0 even if returns are completely random Gaussian noise.
+                    </p>
+                    <ul class="comp-bullet-list">
+                        <li>
+                            <span class="bullet-cross">✗</span>
+                            <span>Ignores the number of discarded failed iterations (Selection Bias).</span>
+                        </li>
+                        <li>
+                            <span class="bullet-cross">✗</span>
+                            <span>Assumes zero kurtosis and Gaussian distribution of pnl returns.</span>
+                        </li>
+                        <li>
+                            <span class="bullet-cross">✗</span>
+                            <span>Result: Catastrophic alpha decay and sudden regime blow-up.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                                <div class="comparison-card dsr-protocol-card">
+                    <div class="comp-header-row">
+                        <span class="comp-label-cyan">QUANTEX PROTOCOL</span>
+                        <span class="badge-verified">Statistically Verified</span>
+                    </div>
+                    <h3 class="comp-main-title">Deflated Sharpe Multiple-Testing Correction</h3>
+                    <p class="comp-desc-cyan">
+                        DSR mathematically shifts the zero-hypothesis hurdle rate based on trial variance, sample
+                        length, skewness, and Kurtosis, guaranteeing mathematical robustness before allocation.
+                    </p>
+                    <ul class="comp-bullet-list">
+                        <li>
+                            <span class="bullet-check">✓</span>
+                            <span>Corrects for Extreme Value distribution of maximum test statistics.</span>
+                        </li>
+                        <li>
+                            <span class="bullet-check">✓</span>
+                            <span>Full higher-moment penalty for negative skew &amp; heavy fat tails.</span>
+                        </li>
+                        <li>
+                            <span class="bullet-check">✓</span>
+                            <span>Immutable cryptographic hash ledger for institutional audit compliance.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider-line"></div>
+
+        <!-- Section 3: Mathematical Formulations & Proofs -->
+        <section class="landing-section" id="proofs">
+            <div class="section-center-pill">
+                <span class="pill-math-proofs">MATHEMATICAL PROOFS &amp; DERIVATIONS</span>
+            </div>
+            <h2 class="landing-section-title">Core Quantitative Formulations</h2>
+            <p class="landing-section-subtitle">
+                The exact mathematical formulations and higher-moment penalties implemented in our C++ statistical engine.
+            </p>
+
+            <div class="formulas-grid">
+                <!-- Formula 1: EVT Maximum Noise Hurdle -->
+                <div class="formula-card">
+                    <div class="formula-card-top">
+                        <span class="formula-badge">ASYMPTOTIC EVT NOISE</span>
+                        <span class="formula-file-tag">Statistics.cpp</span>
+                    </div>
+                    <h3 class="formula-title">Extreme Value Theory (EVT) Hurdle Rate</h3>
+                    <div class="formula-display-box">
+                        <div class="math-main">
+                            $$E\Big[\max_{n=1..N} \{SR_n\}\Big] \approx \sqrt{V[SR]} \cdot \left[ (1 - \gamma)\,\Phi^{-1}\left(1 - \frac{1}{N}\right) + \gamma\,\Phi^{-1}\left(1 - \frac{1}{N e}\right) \right]$$
+                        </div>
+                        <div class="math-asymptotic">
+                            $$\text{Asymptotic Expansion: } E[\max SR] \approx \sqrt{V[SR]} \cdot \left[ \sqrt{2\ln N} + \frac{\gamma}{\sqrt{2\ln N}} \right]$$
+                        </div>
+                    </div>
+                    <p class="formula-desc">
+                        Quantifies the expected maximum Sharpe ratio obtained by pure selection bias across <strong>N</strong> backtested trials. Even when true strategy alpha is zero, testing multiple parameter combinations guarantees lucky false discoveries that expand with $\sqrt{2\ln N}$.
+                    </p>
+                    <div class="formula-params-grid">
+                        <div class="f-param"><span class="p-var">$N$</span>: Total Trials Tested</div>
+                        <div class="f-param"><span class="p-var">$V[SR]$</span>: Variance Across Trials</div>
+                        <div class="f-param"><span class="p-var">$\gamma$</span>: Euler-Mascheroni Constant (0.5772...)</div>
+                        <div class="f-param"><span class="p-var">$\Phi^{-1}$</span>: Inverse Standard Normal CDF</div>
+                    </div>
+                </div>
+
+                <!-- Formula 2: Sharpe Estimation Variance (Higher Moments) -->
+                <div class="formula-card">
+                    <div class="formula-card-top">
+                        <span class="formula-badge">SHARPE ESTIMATION VARIANCE</span>
+                        <span class="formula-file-tag">Statistics.cpp</span>
+                    </div>
+                    <h3 class="formula-title">Bailey &amp; López de Prado Variance Formula</h3>
+                    <div class="formula-display-box">
+                        <div class="math-main">
+                            $$V[SR] = \frac{1 - \gamma_3\cdot SR^* + \left(\frac{\gamma_4 - 1}{4}\right)\cdot(SR^*)^2}{T - 1}$$
+                        </div>
+                    </div>
+                    <p class="formula-desc">
+                        Standard Sharpe estimation assumes independent normal returns. This formula computes the exact asymptotic variance of the Sharpe ratio after penalizing for sample length (<strong>T</strong>), negative skewness ($\gamma_3$), and fat-tailed excess kurtosis ($\gamma_4$).
+                    </p>
+                    <div class="formula-params-grid">
+                        <div class="f-param"><span class="p-var">$T$</span>: Track Record Length (Days)</div>
+                        <div class="f-param"><span class="p-var">$SR^*$</span>: Candidate Reported Sharpe</div>
+                        <div class="f-param"><span class="p-var">$\gamma_3$</span>: Return Sample Skewness</div>
+                        <div class="f-param"><span class="p-var">$\gamma_4$</span>: Sample Kurtosis (Normal = 3.0)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+        <div id="view-terminal" class="view-container" style="display: none;">
+        <div class="terminal-return-bar">
+            <button class="btn-return-landing" id="btn-return-landing">
+                <span>← Back to Overview Landing</span>
+            </button>
+            <div class="terminal-engine-active-pill">
+                <span class="badge-pulse"></span>
+                <span>QUANTEX INTERACTIVE TERMINAL v2.4 (LIVE SESSION)</span>
+            </div>
+        </div>
+
+        <main class="main-layout" id="view-audit">
+            <div class="audit-grid">
+                                <section class="card config-card">
+                    <div class="card-top-row">
+                        <span class="mono-label">STRATEGY CONFIG</span>
+                        <span class="mono-label-muted">DSR AUDIT</span>
+                    </div>
+
+                    <form id="audit-form">
+                        <div class="input-block">
+                            <label for="strategy_name">STRATEGY_IDENTIFIER</label>
+                            <input type="text" id="strategy_name" placeholder="e.g. Momentum_Alpha_v1"
+                                spellcheck="false" required>
+                        </div>
+
+                        <div class="input-row-2">
+                            <div class="input-block">
+                                <label for="reported_sharpe">REPORTED SR (SR*)</label>
+                                <input type="number" id="reported_sharpe" step="0.01" placeholder="e.g. 1.85" required>
+                            </div>
+                            <div class="input-block">
+                                <label for="total_trials">TRIALS TESTED (N)</label>
+                                <input type="number" id="total_trials" placeholder="e.g. 1000" min="2" max="20000"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div class="input-row-2">
+                            <div class="input-block">
+                                <label for="track_record_days">TRACK RECORD (DAYS)</label>
+                                <input type="number" id="track_record_days" placeholder="e.g. 756" min="10" required>
+                            </div>
+                            <div class="input-block">
+                                <label for="skewness">RETURN SKEW (γ3)</label>
+                                <input type="number" id="skewness" step="0.01" placeholder="e.g. -0.45" value="0.00">
+                            </div>
+                        </div>
+
+                        <div class="input-block">
+                            <label for="kurtosis">SAMPLE KURTOSIS (γ4)</label>
+                            <input type="number" id="kurtosis" step="0.01" placeholder="e.g. 3.00 (Gaussian)"
+                                value="3.00">
+                        </div>
+
+                        <div class="input-block" style="display:none;">
+                            <select id="data_source">
+                                <option value="synthetic" selected>Synthetic</option>
+                                <option value="historical">Historical</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" id="btn-run-audit" class="btn-execute-black">
+                            <span class="play-icon">▶</span>
+                            <span>RUN OVERFITTING AUDIT</span>
+                        </button>
+                    </form>
+                </section>
+
+                                <section class="results-column">
+                                        <div id="verdict-card" class="verdict-banner-box verdict-box-neutral">
+                        <div class="verdict-left">
+                            <div class="verdict-pills-row">
+                                <span class="status-tag-pill" id="verdict-tag-pill">
+                                    <span class="tag-icon">ℹ️</span>
+                                    <span id="verdict-status-title">AWAITING AUDIT RUN</span>
+                                </span>
+                                <span class="latency-pill" id="verdict-latency-pill">--</span>
+                            </div>
+                            <h2 class="verdict-headline" id="verdict-headline">No Strategy Evaluated Yet</h2>
+                            <p class="verdict-detail" id="verdict-detail">
+                                Enter the strategy parameters on the left and click "RUN OVERFITTING AUDIT" to evaluate
+                                against Extreme Value Theory noise thresholds.
+                            </p>
+                        </div>
+                        <div class="verdict-right">
+                            <div class="score-box">
+                                <div class="score-meta">
+                                    <span class="score-label">DSR P-VALUE</span>
+                                    <span class="score-main-pct" id="dsr-pct-text">--%</span>
+                                </div>
+                                <div class="score-circle" id="dsr-circle-badge">--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                                        <div class="metrics-quad-grid">
+                        <div class="metric-card">
+                            <span class="metric-card-label">CANDIDATE SR*</span>
+                            <span class="metric-card-val text-blue" id="val-reported-sr">--</span>
+                            <span class="metric-card-sub">Annualized target</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-card-label">NOISE E[MAX SR]</span>
+                            <span class="metric-card-val text-green" id="val-expected-sr">--</span>
+                            <span class="metric-card-sub">EVT null expectation</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-card-label">TRIAL VARIANCE</span>
+                            <span class="metric-card-val" id="val-trial-var">--</span>
+                            <span class="metric-card-sub">Dispersion across N</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-card-label">DSR Z-STATISTIC</span>
+                            <span class="metric-card-val" id="val-z-stat">--</span>
+                            <span class="metric-card-sub">Required: ≥ 1.645</span>
+                        </div>
+                    </div>
+
+                                        <div class="card chart-card">
+                        <div class="chart-top-bar">
+                            <div class="chart-title-group">
+                                <h3 class="chart-main-title">Null Sharpe Distribution</h3>
+                                <span class="trials-badge" id="chart-trials-badge">Awaiting Audit</span>
+                            </div>
+                            <div class="chart-legend-row">
+                                <span class="legend-item"><span class="legend-dot color-bell"></span> Null Noise
+                                    Trials</span>
+                                <span class="legend-item"><span class="legend-dot color-evt"></span> EVT Threshold
+                                    E[max]</span>
+                                <span class="legend-item"><span class="legend-dot color-sr"></span> Candidate Sharpe
+                                    SR*</span>
+                            </div>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="distribution-canvas" height="220"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+        <footer class="landing-footer">
+        <div class="footer-inner">
+            <div class="footer-left">
+                <span class="footer-brand-title">QUANTEX TERMINAL</span>
+                <span class="footer-vbar">|</span>
+                <span class="footer-citation">Based on Marcos López de Prado &amp; David H. Bailey Mathematical
+                    Formulations</span>
+            </div>
+            <div class="footer-right">
+                <div class="footer-copy-text">
+                    © 2026 QUantex Technologies LLC.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
