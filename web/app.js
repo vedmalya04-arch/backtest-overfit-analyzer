@@ -213,31 +213,68 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.stroke();
         }
 
-        const counts = d.sharpe_histogram || [15, 65, 180, 340, 310, 160, 50, 12];
-        const maxC = Math.max(...counts, 1);
-        const minVal = d.min_sharpe || -1.5;
-        const maxVal = d.max_sharpe || 2.5;
+        const kurt = (m && m.sample_kurtosis !== undefined) ? Number(m.sample_kurtosis) : (parseFloat(kurtosisInput.value) || 3.0);
+        const skew = (m && m.sample_skewness !== undefined) ? Number(m.sample_skewness) : (parseFloat(skewnessInput.value) || 0.0);
+        const excessK = Math.max(-1.5, Math.min(kurt - 3.0, 10.0));
+
+        // Use dynamic boundaries with margin for fat tail spread
+        const minVal = (d && d.min_sharpe !== undefined) ? Math.min(d.min_sharpe, -1.8 - excessK * 0.15) : (-1.8 - excessK * 0.15);
+        const maxVal = (d && d.max_sharpe !== undefined) ? Math.max(d.max_sharpe, 2.8 + excessK * 0.15) : (2.8 + excessK * 0.15);
         const range = Math.max(maxVal - minVal, 0.01);
 
         const valToX = (v) => pad.left + ((v - minVal) / range) * plotW;
-        const countToY = (c) => pad.top + plotH - (c / maxC) * plotH;
+
+        // Generate high-resolution density curve reflecting kurtosis (fat tails) and skewness
+        const numCurvePoints = 120;
+        const curvePoints = [];
+        let maxDensity = 0;
+
+        const meanSR = 0.15;
+        const baseStd = 0.65;
+
+        for (let i = 0; i <= numCurvePoints; i++) {
+            const val = minVal + (i / numCurvePoints) * range;
+            const z = (val - meanSR) / baseStd;
+            
+            // Standard normal density
+            let density = Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
+            
+            // Apply Gram-Charlier / Edgeworth expansion for skewness and excess kurtosis
+            const z2 = z * z;
+            const z3 = z2 * z;
+            const z4 = z2 * z2;
+            const h3 = z3 - 3 * z;
+            const h4 = z4 - 6 * z2 + 3;
+
+            // Tail fattening: elevated probability in the tails |z| > 1.4 for high kurtosis
+            const tailBoost = (excessK > 0) ? (excessK * 0.045 * Math.pow(Math.abs(z), 1.6) / (1 + Math.exp(-Math.abs(z) + 1.2))) : 0;
+            const centerPeak = (excessK > 0) ? (excessK * 0.06 * Math.exp(-1.5 * z * z)) : 0;
+            
+            density = density * (1 + (skew / 6) * h3 + (excessK / 24) * h4) + tailBoost + centerPeak;
+            if (density < 0.005) density = 0.005;
+
+            if (density > maxDensity) maxDensity = density;
+            curvePoints.push({ val, density });
+        }
+
+        const countToY = (dens) => pad.top + plotH - (dens / Math.max(maxDensity, 0.001)) * (plotH * 0.88);
 
         ctx.beginPath();
-        const step = plotW / (counts.length - 1);
-        ctx.moveTo(pad.left, pad.top + plotH);
+        const startX = pad.left;
+        const startY = countToY(curvePoints[0].density);
+        ctx.moveTo(startX, pad.top + plotH);
+        ctx.lineTo(startX, startY);
 
-        const points = counts.map((c, i) => ({
-            x: pad.left + i * step,
-            y: countToY(c)
-        }));
-
-        ctx.lineTo(points[0].x, points[0].y);
-        for (let i = 0; i < points.length - 1; i++) {
-            const xc = (points[i].x + points[i + 1].x) / 2;
-            const yc = (points[i].y + points[i + 1].y) / 2;
-            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        for (let i = 0; i < curvePoints.length - 1; i++) {
+            const pCurr = { x: valToX(curvePoints[i].val), y: countToY(curvePoints[i].density) };
+            const pNext = { x: valToX(curvePoints[i + 1].val), y: countToY(curvePoints[i + 1].density) };
+            const xc = (pCurr.x + pNext.x) / 2;
+            const yc = (pCurr.y + pNext.y) / 2;
+            ctx.quadraticCurveTo(pCurr.x, pCurr.y, xc, yc);
         }
-        ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+
+        const lastP = curvePoints[curvePoints.length - 1];
+        ctx.lineTo(valToX(lastP.val), countToY(lastP.density));
         ctx.lineTo(pad.left + plotW, pad.top + plotH);
         ctx.closePath();
 

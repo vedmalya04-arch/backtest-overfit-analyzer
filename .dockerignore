@@ -1,0 +1,11 @@
+.git
+.gitignore
+.vscode
+.gemini
+build/
+*.exe
+*.o
+*.obj
+*.pdb
+*.ilk
+*.log
