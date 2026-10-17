@@ -197,13 +197,7 @@ int main(int argc, char *argv[]) {
 
     int existing_count = 0;
     db->get_audits(1, 0, &existing_count);
-    if (existing_count == 0) {
-      std::cout << "[Init] Seeding baseline strategy audits into PostgreSQL "
-                   "database...\n";
-      run_cli_audit(*db, "Momentum_Trend_Alpha_v1", 1000, 756, 1.85, false);
-      run_cli_audit(*db, "Deep_Orderbook_MeanRevert", 2500, 504, 2.15, false);
-      run_cli_audit(*db, "Macro_Regime_Carry_v2", 500, 1008, 1.40, false);
-    }
+    std::cout << "[Init] PostgreSQL connected. Audit database ready (" << existing_count << " existing records).\n";
 
     if (!server_mode) {
       run_cli_audit(*db, strategy_name, total_trials, track_record_days,

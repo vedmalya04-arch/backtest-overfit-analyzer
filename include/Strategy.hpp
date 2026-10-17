@@ -274,46 +274,68 @@ public:
     }
 
     // High-performance Monte Carlo synthetic trials generator
-    // Generates N backtest parameter trials with user-specified skewness and kurtosis
+    // Simulates N empirical trial return paths of length T under null hypothesis (H0: zero alpha)
+    // with exact Cornish-Fisher adjustments for user skewness and excess kurtosis.
     static std::vector<TrialResult> generate_synthetic_trials(size_t total_trials,
                                                              size_t track_record_days,
                                                              double reported_sharpe,
                                                              double skewness = 0.0,
                                                              double kurtosis = 3.0,
-                                                             unsigned int seed = 1337) {
-        (void)track_record_days;
+                                                             unsigned int seed = 0) {
+        (void)reported_sharpe;
         std::vector<TrialResult> trials;
         trials.reserve(total_trials);
 
-        std::mt19937_64 rng(seed);
+        // Dynamic PRNG seed via hardware entropy if 0, else deterministic
+        std::mt19937_64 rng(seed != 0 ? seed : std::random_device{}());
         std::normal_distribution<double> std_norm(0.0, 1.0);
-        std::uniform_real_distribution<double> vol_dist(0.10, 0.25);
 
-        // Cornish-Fisher expansion coefficients for higher moments
+        // Daily benchmark market volatility (16% annualized, typical equity baseline)
+        const double daily_vol = 0.16 / std::sqrt(252.0);
+
+        // Cornish-Fisher expansion coefficients for non-normal return moments
         double s = skewness;
         double excess_k = std::max(-1.5, std::min(kurtosis - 3.0, 15.0));
+
+        size_t T = (track_record_days >= 2) ? track_record_days : 252;
+        std::vector<double> path(T);
 
         for (size_t i = 0; i < total_trials; ++i) {
             TrialResult t;
             t.trial_index = i + 1;
             t.rule_name = "Permutation_" + std::to_string(i + 1);
 
-            double z = std_norm(rng);
-            // Cornish-Fisher polynomial: maps Gaussian z to distribution with skewness s and excess kurtosis excess_k
-            double z2 = z * z;
-            double z3 = z2 * z;
-            double w = z + (s / 6.0) * (z2 - 1.0)
-                         + (excess_k / 24.0) * (z3 - 3.0 * z)
-                         - (s * s / 36.0) * (2.0 * z3 - 5.0 * z);
+            double sum_r = 0.0;
+            for (size_t d = 0; d < T; ++d) {
+                double z = std_norm(rng);
+                double z2 = z * z;
+                double z3 = z2 * z;
+                // Cornish-Fisher expansion under H0 (mean = 0)
+                double w = z + (s / 6.0) * (z2 - 1.0)
+                             + (excess_k / 24.0) * (z3 - 3.0 * z)
+                             - (s * s / 36.0) * (2.0 * z3 - 5.0 * z);
+                double r = daily_vol * w;
+                path[d] = r;
+                sum_r += r;
+            }
 
-            // Scale to empirical noise dispersion: sigma ~ 0.58, center ~ 0.12
-            double sr = 0.12 + 0.58 * w;
-            double vol = vol_dist(rng);
-            double ret = sr * vol;
+            double mean_r = sum_r / static_cast<double>(T);
+            double sum_sq = 0.0;
+            for (size_t d = 0; d < T; ++d) {
+                double diff = path[d] - mean_r;
+                sum_sq += diff * diff;
+            }
+            double var_r = sum_sq / static_cast<double>(T - 1);
+            double std_r = (var_r > 1e-12) ? std::sqrt(var_r) : 1e-6;
 
-            t.annualized_return = ret;
-            t.annualized_volatility = vol;
-            t.sharpe_ratio = sr;
+            double trial_sr = (mean_r / std_r) * std::sqrt(252.0);
+            double trial_ann_vol = std_r * std::sqrt(252.0);
+            double trial_ann_ret = mean_r * 252.0;
+
+            t.annualized_return = trial_ann_ret;
+            t.annualized_volatility = trial_ann_vol;
+            t.sharpe_ratio = trial_sr;
+            t.daily_returns = path;
             trials.push_back(std::move(t));
         }
 

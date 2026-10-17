@@ -193,12 +193,17 @@ double Statistics::compute_dsr_z(double reported_sharpe,
                                 double expected_max_sharpe,
                                 size_t track_record_days,
                                 double skewness,
-                                double kurtosis) {
+                                double kurtosis,
+                                double annualization_factor) {
     double t = static_cast<double>(track_record_days > 1 ? track_record_days : 2);
-    double sr_star = reported_sharpe;
+    double sqrt_factor = (annualization_factor > 0.0) ? std::sqrt(annualization_factor) : 1.0;
 
-    double term_skew = skewness * sr_star;
-    double term_kurt = ((kurtosis - 1.0) / 4.0) * (sr_star * sr_star);
+    // Convert annualized Sharpe ratios to per-period (daily) sampling frequency
+    double sr_period = reported_sharpe / sqrt_factor;
+    double sr0_period = expected_max_sharpe / sqrt_factor;
+
+    double term_skew = skewness * sr_period;
+    double term_kurt = ((kurtosis - 1.0) / 4.0) * (sr_period * sr_period);
     double denom_sq = 1.0 - term_skew + term_kurt;
 
     if (denom_sq < VARIANCE_EPSILON) {
@@ -206,7 +211,7 @@ double Statistics::compute_dsr_z(double reported_sharpe,
     }
 
     double denom = std::sqrt(denom_sq);
-    double z = ((sr_star - expected_max_sharpe) * std::sqrt(t - 1.0)) / denom;
+    double z = ((sr_period - sr0_period) * std::sqrt(t - 1.0)) / denom;
 
     return z;
 }
@@ -215,8 +220,9 @@ double Statistics::compute_dsr(double reported_sharpe,
                               double expected_max_sharpe,
                               size_t track_record_days,
                               double skewness,
-                              double kurtosis) {
-    double z = compute_dsr_z(reported_sharpe, expected_max_sharpe, track_record_days, skewness, kurtosis);
+                              double kurtosis,
+                              double annualization_factor) {
+    double z = compute_dsr_z(reported_sharpe, expected_max_sharpe, track_record_days, skewness, kurtosis, annualization_factor);
     return normal_cdf(z);
 }
 

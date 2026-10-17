@@ -49,13 +49,15 @@ public:
                                 double expected_max_sharpe,
                                 size_t track_record_days,
                                 double skewness,
-                                double kurtosis);
+                                double kurtosis,
+                                double annualization_factor = 252.0);
 
     static double compute_dsr(double reported_sharpe,
                               double expected_max_sharpe,
                               size_t track_record_days,
                               double skewness,
-                              double kurtosis);
+                              double kurtosis,
+                              double annualization_factor = 252.0);
 
     static HistogramData compute_histogram(const std::vector<double>& data, size_t num_bins = 8);
 };

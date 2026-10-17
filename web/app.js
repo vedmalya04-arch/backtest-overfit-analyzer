@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : '0.00';
         valZStat.textContent = zStat;
 
-        chartTrialsBadge.textContent = `N = ${totalTrialsInput.value} Trials`;
+        chartTrialsBadge.textContent = `N = ${m.total_trials || totalTrialsInput.value} Trials`;
 
         const isOverfit = m.is_overfitted;
         const pVal = m.dsr_p_value;
@@ -224,13 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
             verdictCard.className = 'verdict-banner-box verdict-box-reject';
             verdictStatusTitle.textContent = 'LIKELY OVERFITTED / SELECTION BIAS';
             verdictHeadline.textContent = 'Performance is consistent with statistical noise';
-            verdictDetail.textContent = `The reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) fails to exceed the Extreme Value Theory threshold expected from searching ${totalTrialsInput.value} trials (E[max]=${Number(m.expected_max_noise_sharpe).toFixed(2)}).`;
+            verdictDetail.textContent = `The reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) fails to exceed the Extreme Value Theory threshold expected from searching ${m.total_trials || totalTrialsInput.value} trials (E[max]=${Number(m.expected_max_noise_sharpe).toFixed(2)}).`;
             valReportedSr.className = 'metric-card-val text-red';
         } else {
             verdictCard.className = 'verdict-banner-box verdict-box-pass';
             verdictStatusTitle.textContent = 'ROBUST ALPHA / STATISTICALLY SIGNIFICANT';
             verdictHeadline.textContent = 'High confidence genuine alpha discovery';
-            verdictDetail.textContent = `Reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) exceeds the maximum noise threshold (${Number(m.expected_max_noise_sharpe).toFixed(2)}) with ${pPct}% deflated confidence after adjusting for ${totalTrialsInput.value} trials.`;
+            verdictDetail.textContent = `Reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) exceeds the maximum noise threshold (${Number(m.expected_max_noise_sharpe).toFixed(2)}) with ${pPct}% deflated confidence after adjusting for ${m.total_trials || totalTrialsInput.value} trials.`;
             valReportedSr.className = 'metric-card-val text-green';
         }
 
@@ -267,8 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.stroke();
         }
 
-        const counts = d.sharpe_histogram || [0, 1, 2, 4, 2, 1, 0, 0];
-        const maxC = Math.max(...counts, 1);
+        const counts = (d && d.sharpe_histogram && d.sharpe_histogram.length > 0) ? d.sharpe_histogram : [];
+        const maxC = counts.length > 0 ? Math.max(...counts, 1) : 1;
         
         // Dynamic horizontal boundaries covering data range, E[max], and candidate SR*
         let minVal = (d && d.min_sharpe !== undefined) ? d.min_sharpe : -1.5;

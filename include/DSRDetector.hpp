@@ -42,8 +42,9 @@ public:
                                 size_t total_trials,
                                 size_t track_record_days,
                                 const std::vector<double>& trial_sharpes,
-                                double skewness = -0.45,
-                                double kurtosis = 4.12) {
+                                double skewness = 0.0,
+                                double kurtosis = 3.0,
+                                double annualization_factor = 252.0) {
         auto start_clock = std::chrono::high_resolution_clock::now();
 
         AuditReport report;
@@ -54,10 +55,12 @@ public:
 
         double sharpe_mean = 0.0;
         double trial_variance = 0.0;
-        if (!trial_sharpes.empty()) {
+        if (trial_sharpes.size() > 1) {
             trial_variance = Statistics::sample_variance(trial_sharpes, &sharpe_mean);
         } else {
-            trial_variance = 0.38;
+            // Asymptotic theoretical variance of Sharpe ratio under H0: Var[SR] = q / (T - 1)
+            double t = static_cast<double>(track_record_days > 1 ? track_record_days : 2);
+            trial_variance = annualization_factor / (t - 1.0);
         }
 
         if (trial_variance < Statistics::VARIANCE_EPSILON) {
@@ -66,7 +69,7 @@ public:
 
         double exp_max = Statistics::expected_max_sharpe(total_trials, trial_variance);
 
-        double z_score = Statistics::compute_dsr_z(reported_sharpe, exp_max, track_record_days, skewness, kurtosis);
+        double z_score = Statistics::compute_dsr_z(reported_sharpe, exp_max, track_record_days, skewness, kurtosis, annualization_factor);
         double dsr_p = Statistics::normal_cdf(z_score);
 
         bool overfitted = (dsr_p < DSR_SIGNIFICANCE_THRESHOLD);

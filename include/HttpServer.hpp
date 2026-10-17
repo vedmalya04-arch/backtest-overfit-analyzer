@@ -461,16 +461,18 @@ private:
       strategy_name =
           "Strategy_Candidate_" + std::to_string(std::time(nullptr));
 
-    int total_trials = JsonUtils::extract_int(body, "total_trials", 1000);
-    if (total_trials < 2)
-      total_trials = 2;
-    if (total_trials > 20000)
-      total_trials = 20000;
+    int total_trials = JsonUtils::extract_int(body, "total_trials", -1);
+    if (total_trials < 2) {
+      return make_json_response(400, "{\"error\": \"Field 'total_trials' must be >= 2\"}");
+    }
+    if (total_trials > 100000) {
+      return make_json_response(400, "{\"error\": \"Field 'total_trials' exceeds maximum of 100,000\"}");
+    }
 
-    int track_record_days =
-        JsonUtils::extract_int(body, "track_record_days", 756);
-    if (track_record_days < 10)
-      track_record_days = 756;
+    int track_record_days = JsonUtils::extract_int(body, "track_record_days", -1);
+    if (track_record_days < 2) {
+      return make_json_response(400, "{\"error\": \"Field 'track_record_days' must be >= 2\"}");
+    }
 
     double reported_sharpe =
         JsonUtils::extract_double(body, "reported_sharpe", -99999.0);
