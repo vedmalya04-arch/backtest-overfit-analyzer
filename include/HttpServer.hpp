@@ -159,8 +159,11 @@ public:
                                double default_val = 0.0) {
     std::string search = "\"" + key + "\"";
     size_t pos = json.find(search);
-    if (pos == std::string::npos)
-      return default_val;
+    if (pos == std::string::npos) {
+      search = key;
+      pos = json.find(search);
+      if (pos == std::string::npos) return default_val;
+    }
 
     size_t colon = json.find(':', pos + search.length());
     if (colon == std::string::npos)
@@ -169,13 +172,13 @@ public:
     size_t start = colon + 1;
     while (start < json.length() &&
            (json[start] == ' ' || json[start] == '\t' || json[start] == '\r' ||
-            json[start] == '\n')) {
+            json[start] == '\n' || json[start] == '"')) {
       start++;
     }
 
     size_t end = start;
     while (end < json.length() &&
-           (std::isdigit(json[end]) || json[end] == '.' || json[end] == '-' ||
+           (std::isdigit(static_cast<unsigned char>(json[end])) || json[end] == '.' || json[end] == '-' ||
             json[end] == '+' || json[end] == 'e' || json[end] == 'E')) {
       end++;
     }
@@ -315,24 +318,42 @@ public:
 
 private:
   void handle_connection(SOCKET client) {
-    char buffer[8192];
-    int bytes_read = recv(client, buffer, sizeof(buffer) - 1, 0);
-    if (bytes_read <= 0) {
+    std::string raw_req;
+    char buffer[4096];
+    size_t header_end = std::string::npos;
+    size_t header_delim_len = 4;
+
+    while (true) {
+      int bytes = recv(client, buffer, sizeof(buffer), 0);
+      if (bytes <= 0) break;
+      raw_req.append(buffer, bytes);
+
+      header_end = raw_req.find("\r\n\r\n");
+      if (header_end != std::string::npos) {
+        header_delim_len = 4;
+        break;
+      }
+      header_end = raw_req.find("\n\n");
+      if (header_end != std::string::npos) {
+        header_delim_len = 2;
+        break;
+      }
+      if (raw_req.length() > 65536) break;
+    }
+
+    if (header_end == std::string::npos) {
       closesocket(client);
       return;
     }
 
-    buffer[bytes_read] = '\0';
-    std::string raw_req(buffer, bytes_read);
-
-    std::istringstream req_stream(raw_req);
+    std::string headers = raw_req.substr(0, header_end);
+    std::istringstream req_stream(headers);
     std::string method, uri, http_version;
     req_stream >> method >> uri >> http_version;
 
     std::string header_line;
     int content_length = 0;
-    while (std::getline(req_stream, header_line) && header_line != "\r" &&
-           !header_line.empty()) {
+    while (std::getline(req_stream, header_line)) {
       std::string lower_hdr = header_line;
       std::transform(lower_hdr.begin(), lower_hdr.end(), lower_hdr.begin(),
                      ::tolower);
@@ -345,22 +366,14 @@ private:
       }
     }
 
-    std::string body;
-    size_t header_end = raw_req.find("\r\n\r\n");
-    if (header_end != std::string::npos) {
-      body = raw_req.substr(header_end + 4);
-
-      int remaining = content_length - static_cast<int>(body.length());
-      while (remaining > 0) {
-        char more[4096];
-        int chunk =
-            recv(client, more,
-                 std::min(remaining, static_cast<int>(sizeof(more))), 0);
-        if (chunk <= 0)
-          break;
-        body.append(more, chunk);
-        remaining -= chunk;
-      }
+    std::string body = raw_req.substr(header_end + header_delim_len);
+    int remaining = content_length - static_cast<int>(body.length());
+    while (remaining > 0) {
+      int chunk = recv(client, buffer,
+                       std::min(remaining, static_cast<int>(sizeof(buffer))), 0);
+      if (chunk <= 0) break;
+      body.append(buffer, chunk);
+      remaining -= chunk;
     }
 
     std::string response;
@@ -430,14 +443,18 @@ private:
        << "  \"status\": \"healthy\",\n"
        << "  \"uptime_seconds\": " << std::fixed << std::setprecision(2)
        << uptime.count() << ",\n"
-       << "  \"database\": \"PostgreSQL (Connected: boa@localhost:5432)\",\n"
+       << "  \"database\": \"PostgreSQL (Connected)\",\n"
        << "  \"engine\": \"David Bailey & Marcos Lopez de Prado DSR Engine\",\n"
-       << "  \"version\": \"1.0.0 (C++ / PostgreSQL 17)\"\n"
+       << "  \"version\": \"1.0.0 (C++ / PostgreSQL)\"\n"
        << "}";
     return make_json_response(200, ss.str());
   }
 
   std::string handle_post_audit(const std::string &body) {
+    if (body.empty()) {
+      return make_json_response(400, "{\"error\": \"Empty request body\"}");
+    }
+
     std::string strategy_name =
         JsonUtils::extract_string(body, "strategy_name");
     if (strategy_name.empty())
@@ -456,7 +473,10 @@ private:
       track_record_days = 756;
 
     double reported_sharpe =
-        JsonUtils::extract_double(body, "reported_sharpe", 1.85);
+        JsonUtils::extract_double(body, "reported_sharpe", -99999.0);
+    if (reported_sharpe == -99999.0) {
+      return make_json_response(400, "{\"error\": \"Missing 'reported_sharpe' in request body\"}");
+    }
     double skewness = JsonUtils::extract_double(body, "skewness", 0.0);
     double kurtosis = JsonUtils::extract_double(body, "kurtosis", 3.0);
     bool generate_synthetic =

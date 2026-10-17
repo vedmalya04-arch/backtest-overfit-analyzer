@@ -120,13 +120,25 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRunAudit.disabled = true;
         btnRunAudit.innerHTML = '<span>EVALUATING IN C++ ENGINE...</span>';
 
+        const rawSr = reportedSharpeInput ? reportedSharpeInput.value.trim() : '';
+        const parsedSr = parseFloat(rawSr);
+        const reportedSr = !isNaN(parsedSr) ? parsedSr : 1.0;
+
+        const rawTrials = totalTrialsInput ? totalTrialsInput.value.trim() : '';
+        const parsedTrials = parseInt(rawTrials, 10);
+        const trials = (!isNaN(parsedTrials) && parsedTrials >= 2) ? parsedTrials : 10;
+
+        const rawDays = trackRecordDaysInput ? trackRecordDaysInput.value.trim() : '';
+        const parsedDays = parseInt(rawDays, 10);
+        const days = (!isNaN(parsedDays) && parsedDays >= 10) ? parsedDays : 365;
+
         const payload = {
-            strategy_name: strategyNameInput.value.trim() || 'Custom_Strategy',
-            total_trials: parseInt(totalTrialsInput.value, 10) || 1000,
-            track_record_days: parseInt(trackRecordDaysInput.value, 10) || 756,
-            reported_sharpe: parseFloat(reportedSharpeInput.value) || 1.85,
-            skewness: (skewnessInput.value !== '' && !isNaN(parseFloat(skewnessInput.value))) ? parseFloat(skewnessInput.value) : 0.0,
-            kurtosis: (kurtosisInput.value !== '' && !isNaN(parseFloat(kurtosisInput.value))) ? parseFloat(kurtosisInput.value) : 3.0,
+            strategy_name: (strategyNameInput && strategyNameInput.value.trim()) ? strategyNameInput.value.trim() : 'Strategy_Custom',
+            total_trials: trials,
+            track_record_days: days,
+            reported_sharpe: reportedSr,
+            skewness: (skewnessInput && skewnessInput.value !== '' && !isNaN(parseFloat(skewnessInput.value))) ? parseFloat(skewnessInput.value) : 0.0,
+            kurtosis: (kurtosisInput && kurtosisInput.value !== '' && !isNaN(parseFloat(kurtosisInput.value))) ? parseFloat(kurtosisInput.value) : 3.0,
             generate_synthetic_distribution: true
         };
 
