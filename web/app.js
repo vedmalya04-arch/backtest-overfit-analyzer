@@ -213,25 +213,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         chartTrialsBadge.textContent = `N = ${m.total_trials || totalTrialsInput.value} Trials`;
 
-        const isOverfit = m.is_overfitted;
         const pVal = m.dsr_p_value;
         const pPct = (pVal * 100).toFixed(1);
+        const srVal = Number(m.reported_sharpe);
+        const expMaxVal = Number(m.expected_max_noise_sharpe);
+        const nTrials = m.total_trials || totalTrialsInput.value;
+        const nDays = m.track_record_days || trackRecordDaysInput.value;
+        const minTrl = m.min_track_record_days ? Math.round(m.min_track_record_days) : 0;
 
         dsrPctText.textContent = `${pPct}%`;
         dsrCircleBadge.textContent = pVal.toFixed(2);
 
-        if (isOverfit) {
+        // State 1: Significant Genuine Alpha (DSR >= 95%, Z >= 1.645)
+        if (pVal >= 0.95) {
+            verdictCard.className = 'verdict-banner-box verdict-box-pass';
+            verdictStatusTitle.textContent = 'ROBUST ALPHA / STATISTICALLY SIGNIFICANT';
+            verdictHeadline.textContent = 'High confidence genuine alpha discovery (DSR ≥ 95%)';
+            verdictDetail.textContent = `Reported Sharpe (${srVal.toFixed(2)}) decisively exceeds the Extreme Value Theory noise hurdle (${expMaxVal.toFixed(2)}) across ${nTrials} trials with ${pPct}% statistical confidence over ${nDays} days (Z = ${zStat}).`;
+            valReportedSr.className = 'metric-card-val text-green';
+        } 
+        // State 2: Exceeds Noise Hurdle, but Track Record Too Short for 95% Confidence (SR* > E[max], DSR < 95%)
+        else if (srVal > expMaxVal) {
+            verdictCard.className = 'verdict-banner-box verdict-box-warn';
+            verdictStatusTitle.textContent = 'MARGINAL CONFIDENCE / SAMPLE SIZE LIMITED';
+            const excessSr = (srVal - expMaxVal).toFixed(2);
+            verdictHeadline.textContent = `Beats noise threshold by +${excessSr}, but sample size is limited`;
+            const minTrlText = minTrl > 0 ? ` To guarantee 95% significance (Z ≥ 1.645), this edge requires at least ~${minTrl} days (~${(minTrl / 252).toFixed(1)} yrs) of track record.` : '';
+            verdictDetail.textContent = `Reported Sharpe (${srVal.toFixed(2)}) exceeds the expected maximum noise (${expMaxVal.toFixed(2)}) from searching ${nTrials} trials. However, ${nDays} days (~${(nDays / 252).toFixed(1)} yrs) yields ${pPct}% confidence (Z = ${zStat} vs 1.645 required).${minTrlText}`;
+            valReportedSr.className = 'metric-card-val text-blue';
+        }
+        // State 3: Below Noise Hurdle (SR* <= E[max], selection bias / pure luck)
+        else {
             verdictCard.className = 'verdict-banner-box verdict-box-reject';
             verdictStatusTitle.textContent = 'LIKELY OVERFITTED / SELECTION BIAS';
             verdictHeadline.textContent = 'Performance is consistent with statistical noise';
-            verdictDetail.textContent = `The reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) fails to exceed the Extreme Value Theory threshold expected from searching ${m.total_trials || totalTrialsInput.value} trials (E[max]=${Number(m.expected_max_noise_sharpe).toFixed(2)}).`;
+            verdictDetail.textContent = `Reported Sharpe (${srVal.toFixed(2)}) fails to exceed the Extreme Value Theory noise threshold expected from testing ${nTrials} trials (E[max]=${expMaxVal.toFixed(2)}). Performance is indistinguishable from random selection bias.`;
             valReportedSr.className = 'metric-card-val text-red';
-        } else {
-            verdictCard.className = 'verdict-banner-box verdict-box-pass';
-            verdictStatusTitle.textContent = 'ROBUST ALPHA / STATISTICALLY SIGNIFICANT';
-            verdictHeadline.textContent = 'High confidence genuine alpha discovery';
-            verdictDetail.textContent = `Reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) exceeds the maximum noise threshold (${Number(m.expected_max_noise_sharpe).toFixed(2)}) with ${pPct}% deflated confidence after adjusting for ${m.total_trials || totalTrialsInput.value} trials.`;
-            valReportedSr.className = 'metric-card-val text-green';
         }
 
         drawChart(data);

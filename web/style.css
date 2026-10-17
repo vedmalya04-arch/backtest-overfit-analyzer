@@ -1025,6 +1025,11 @@ textarea:focus {
     background: var(--text-sub);
 }
 
+.verdict-box-warn::before {
+    background: #f59e0b;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
 .verdict-pills-row {
     display: flex;
     align-items: center;
@@ -1059,6 +1064,12 @@ textarea:focus {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-muted);
     border: 1px solid #222222;
+}
+
+.verdict-box-warn .status-tag-pill {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .latency-pill {
@@ -1119,6 +1130,10 @@ textarea:focus {
     color: var(--color-green);
 }
 
+.verdict-box-warn .score-main-pct {
+    color: #fbbf24;
+}
+
 .score-circle {
     width: 44px;
     height: 44px;
@@ -1137,6 +1152,12 @@ textarea:focus {
     border-color: var(--tag-green-border);
     color: var(--tag-green-text);
     background: var(--tag-green-bg);
+}
+
+.verdict-box-warn .score-circle {
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.12);
 }
 
 .metrics-quad-grid {

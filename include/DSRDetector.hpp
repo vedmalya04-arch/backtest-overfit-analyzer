@@ -18,6 +18,7 @@ struct AuditMetrics {
     double trial_variance = 0.0;
     size_t total_trials = 0;
     size_t track_record_days = 0;
+    double min_track_record_days = 0.0;
 };
 
 struct AuditReport {
@@ -84,6 +85,18 @@ public:
         report.metrics.trial_variance = trial_variance;
         report.metrics.total_trials = total_trials;
         report.metrics.track_record_days = track_record_days;
+
+        double min_trl = 0.0;
+        double sqrt_factor = (annualization_factor > 0.0) ? std::sqrt(annualization_factor) : 1.0;
+        double diff = (reported_sharpe - exp_max) / sqrt_factor;
+        if (diff > 1e-6) {
+            double sr_daily = reported_sharpe / sqrt_factor;
+            double denom_sq = 1.0 - skewness * sr_daily + ((kurtosis - 1.0) / 4.0) * (sr_daily * sr_daily);
+            if (denom_sq < 1e-12) denom_sq = 1e-12;
+            double z_crit = 1.6448536269514722;
+            min_trl = 1.0 + denom_sq * ((z_crit / diff) * (z_crit / diff));
+        }
+        report.metrics.min_track_record_days = min_trl;
 
         if (!trial_sharpes.empty()) {
             report.distribution_summary = Statistics::compute_histogram(trial_sharpes, 8);
