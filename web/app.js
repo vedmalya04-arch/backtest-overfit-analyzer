@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const telemetryLatency = document.getElementById('telemetry-latency');
 
     const canvas = document.getElementById('distribution-canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas ? canvas.getContext('2d') : null;
 
     const viewLanding = document.getElementById('view-landing');
     const viewTerminal = document.getElementById('view-terminal');
@@ -32,6 +32,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnTopTerminal = document.getElementById('btn-top-terminal');
     const btnReturnLanding = document.getElementById('btn-return-landing');
     const brandLogo = document.getElementById('brand-logo');
+
+    // Dynamic Backend URL Management
+    function getBackendUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('api')) {
+            const api = urlParams.get('api').replace(/\/+$/, '');
+            localStorage.setItem('DSR_BACKEND_URL', api);
+            return api;
+        }
+
+        const saved = localStorage.getItem('DSR_BACKEND_URL');
+        if (saved && saved.trim().length > 0) {
+            return saved.trim().replace(/\/+$/, '');
+        }
+
+        // If local development without running through C++ port 8088
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            if (window.location.port !== '8088') {
+                return 'http://127.0.0.1:8088';
+            }
+            return '';
+        }
+
+        // If hosted on Render directly, backend is same origin
+        if (window.location.hostname.includes('onrender.com')) {
+            return '';
+        }
+
+        // Default to same-origin relative paths
+        return '';
+    }
+
+    function promptBackendConfig() {
+        const current = getBackendUrl() || (window.location.origin);
+        const input = prompt(
+            "Enter C++ DSR Engine Backend URL:\n(e.g., https://your-app.onrender.com or http://127.0.0.1:8088)",
+            current
+        );
+        if (input !== null) {
+            const cleaned = input.trim().replace(/\/+$/, '');
+            if (cleaned.length > 0) {
+                localStorage.setItem('DSR_BACKEND_URL', cleaned);
+            } else {
+                localStorage.removeItem('DSR_BACKEND_URL');
+            }
+            checkHealth();
+        }
+    }
+
+    // Connect pill to configure backend URL
+    const terminalPill = document.querySelector('.terminal-engine-active-pill');
+    if (terminalPill) {
+        terminalPill.style.cursor = 'pointer';
+        terminalPill.title = 'Click to configure C++ Backend API endpoint';
+        terminalPill.addEventListener('click', promptBackendConfig);
+    }
 
     function showTerminal() {
         if (viewLanding && viewTerminal) {
@@ -62,39 +118,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function runAudit() {
         btnRunAudit.disabled = true;
-        btnRunAudit.innerHTML = '<span>EVALUATING MOMENTS &amp; EVT...</span>';
+        btnRunAudit.innerHTML = '<span>EVALUATING IN C++ ENGINE...</span>';
 
         const payload = {
             strategy_name: strategyNameInput.value.trim() || 'Custom_Strategy',
             total_trials: parseInt(totalTrialsInput.value, 10) || 1000,
             track_record_days: parseInt(trackRecordDaysInput.value, 10) || 756,
-            reported_sharpe: parseFloat(reportedSharpeInput.value) || 1.50,
-            skewness: parseFloat(skewnessInput.value) !== undefined && !isNaN(parseFloat(skewnessInput.value)) ? parseFloat(skewnessInput.value) : 0.0,
-            kurtosis: parseFloat(kurtosisInput.value) !== undefined && !isNaN(parseFloat(kurtosisInput.value)) ? parseFloat(kurtosisInput.value) : 3.0,
+            reported_sharpe: parseFloat(reportedSharpeInput.value) || 1.85,
+            skewness: (skewnessInput.value !== '' && !isNaN(parseFloat(skewnessInput.value))) ? parseFloat(skewnessInput.value) : 0.0,
+            kurtosis: (kurtosisInput.value !== '' && !isNaN(parseFloat(kurtosisInput.value))) ? parseFloat(kurtosisInput.value) : 3.0,
             generate_synthetic_distribution: true
         };
 
         const t0 = performance.now();
+        const base = getBackendUrl();
+        const targetUrl = `${base}/api/v1/audits`;
+
         try {
-            const res = await fetch('/api/v1/audits', {
+            const res = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             const elapsed = Math.max(0.04, (performance.now() - t0)).toFixed(2);
-            if (res.ok) {
-                const data = await res.json();
-                lastAuditData = data;
-                renderAuditResults(data, elapsed);
-            } else {
-                console.warn('Backend returned non-200. Calculating offline fallback...');
-                renderOfflineSimulation(payload, elapsed);
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Server returned HTTP ${res.status}: ${errText}`);
             }
+
+            const data = await res.json();
+            lastAuditData = data;
+            renderAuditResults(data, elapsed);
+
         } catch (err) {
-            console.error('Fetch error:', err);
+            console.error('Audit execution error:', err);
             const elapsed = (performance.now() - t0).toFixed(2);
-            renderOfflineSimulation(payload, elapsed);
+            renderError(err.message, targetUrl, elapsed);
         } finally {
             btnRunAudit.disabled = false;
             btnRunAudit.innerHTML = '<span class="play-icon">▶</span><span>RUN OVERFITTING AUDIT</span>';
@@ -106,9 +166,26 @@ document.addEventListener('DOMContentLoaded', () => {
         runAudit();
     });
 
+    function renderError(errMsg, targetUrl, elapsedMs) {
+        if (telemetryLatency) telemetryLatency.textContent = `LATENCY: ${elapsedMs}ms (ERROR)`;
+        if (verdictLatencyPill) verdictLatencyPill.textContent = `${elapsedMs}ms`;
+
+        verdictCard.className = 'verdict-banner-box verdict-box-reject';
+        verdictStatusTitle.textContent = 'BACKEND CONNECTION ERROR';
+        verdictHeadline.textContent = 'Could not reach C++ DSR Engine';
+        verdictDetail.innerHTML = `Attempted endpoint: <code>${targetUrl}</code><br>Reason: ${errMsg}<br><a href="#" id="link-fix-endpoint" style="color: #38bdf8; text-decoration: underline; margin-top: 8px; display: inline-block;">Click here to set your Render Backend URL</a>`;
+
+        const linkFix = document.getElementById('link-fix-endpoint');
+        if (linkFix) {
+            linkFix.addEventListener('click', (e) => {
+                e.preventDefault();
+                promptBackendConfig();
+            });
+        }
+    }
+
     function renderAuditResults(data, elapsedMs) {
         const m = data.metrics;
-        const dist = data.distribution_summary;
 
         if (telemetryLatency) telemetryLatency.textContent = `LATENCY: ${elapsedMs}ms`;
         if (verdictLatencyPill) verdictLatencyPill.textContent = `${elapsedMs}ms`;
@@ -119,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const zStat = (m.dsr_z_score !== undefined && m.dsr_z_score !== null)
             ? Number(m.dsr_z_score).toFixed(2)
-            : ((m.reported_sharpe - m.expected_max_noise_sharpe) / Math.sqrt(Math.max(m.trial_variance, 0.0001))).toFixed(2);
+            : '0.00';
         valZStat.textContent = zStat;
 
         chartTrialsBadge.textContent = `N = ${totalTrialsInput.value} Trials`;
@@ -135,67 +212,31 @@ document.addEventListener('DOMContentLoaded', () => {
             verdictCard.className = 'verdict-banner-box verdict-box-reject';
             verdictStatusTitle.textContent = 'LIKELY OVERFITTED / SELECTION BIAS';
             verdictHeadline.textContent = 'Performance is consistent with statistical noise';
-            verdictDetail.textContent = `The reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) fails to exceed the Extreme Value Theory threshold expected from searching ${totalTrialsInput.value} trials.`;
+            verdictDetail.textContent = `The reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) fails to exceed the Extreme Value Theory threshold expected from searching ${totalTrialsInput.value} trials (E[max]=${Number(m.expected_max_noise_sharpe).toFixed(2)}).`;
             valReportedSr.className = 'metric-card-val text-red';
         } else {
             verdictCard.className = 'verdict-banner-box verdict-box-pass';
             verdictStatusTitle.textContent = 'ROBUST ALPHA / STATISTICALLY SIGNIFICANT';
             verdictHeadline.textContent = 'High confidence genuine alpha discovery';
-            verdictDetail.textContent = `Reported Sharpe exceeds the maximum noise threshold with ${pPct}% deflated confidence after adjusting for multiple testing.`;
+            verdictDetail.textContent = `Reported Sharpe (${Number(m.reported_sharpe).toFixed(2)}) exceeds the maximum noise threshold (${Number(m.expected_max_noise_sharpe).toFixed(2)}) with ${pPct}% deflated confidence after adjusting for ${totalTrialsInput.value} trials.`;
             valReportedSr.className = 'metric-card-val text-green';
         }
 
         drawChart(data);
     }
 
-    function renderOfflineSimulation(payload, elapsedMs) {
-        const N = payload.total_trials;
-        const T = payload.track_record_days;
-        const SR = payload.reported_sharpe;
-        const skew = payload.skewness || 0.0;
-        const kurt = payload.kurtosis || 3.0;
-        const gamma = 0.5772156649;
-
-        const eMax = Math.sqrt(2 * Math.log(N)) + (gamma / Math.sqrt(2 * Math.log(N)));
-        const noiseSR = Math.min(eMax * 0.75, 4.0);
-
-        const srVar = Math.max(1e-6, (1 - skew * SR + ((kurt - 1) / 4) * (SR * SR)) / Math.max(T - 1, 1));
-        const zScore = (SR - noiseSR) / Math.sqrt(srVar);
-        const pVal = Math.max(0.001, Math.min(0.999, 1 / (1 + Math.exp(-1.702 * zScore))));
-        const isOver = pVal < 0.95;
-
-        const tailBoost = Math.min(Math.max(kurt - 3.0, 0) * 12, 100);
-        const mockData = {
-            status: 'success',
-            metrics: {
-                reported_sharpe: SR,
-                expected_max_noise_sharpe: noiseSR,
-                trial_variance: 0.315 + (kurt - 3.0) * 0.02,
-                dsr_z_score: zScore,
-                dsr_p_value: pVal,
-                is_overfitted: isOver
-            },
-            distribution_summary: {
-                min_sharpe: -1.2 - tailBoost * 0.015,
-                max_sharpe: 2.8 + tailBoost * 0.02,
-                counts: [15 + tailBoost, 70, 210, 420 - tailBoost, 310, 130, 40 + Math.round(tailBoost * 0.8), 5 + Math.round(tailBoost * 0.5)]
-            }
-        };
-
-        renderAuditResults(mockData, elapsedMs);
-    }
-
     function drawChart(data) {
+        if (!canvas || !ctx) return;
         const d = data.distribution_summary;
         const m = data.metrics;
 
         const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * window.devicePixelRatio;
-        canvas.height = 220 * window.devicePixelRatio;
+        const w = rect.width || 600;
+        const h = 220;
+        canvas.width = w * window.devicePixelRatio;
+        canvas.height = h * window.devicePixelRatio;
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-        const w = rect.width;
-        const h = 220;
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, w, h);
 
@@ -203,7 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const plotW = w - pad.left - pad.right;
         const plotH = h - pad.top - pad.bottom;
 
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        // Grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1;
         for (let i = 0; i <= 3; i++) {
             const y = pad.top + (plotH / 3) * i;
@@ -213,81 +255,65 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.stroke();
         }
 
-        const kurt = (m && m.sample_kurtosis !== undefined) ? Number(m.sample_kurtosis) : (parseFloat(kurtosisInput.value) || 3.0);
-        const skew = (m && m.sample_skewness !== undefined) ? Number(m.sample_skewness) : (parseFloat(skewnessInput.value) || 0.0);
-        const excessK = Math.max(-1.5, Math.min(kurt - 3.0, 10.0));
-
-        // Use dynamic boundaries with margin for fat tail spread
-        const minVal = (d && d.min_sharpe !== undefined) ? Math.min(d.min_sharpe, -1.8 - excessK * 0.15) : (-1.8 - excessK * 0.15);
-        const maxVal = (d && d.max_sharpe !== undefined) ? Math.max(d.max_sharpe, 2.8 + excessK * 0.15) : (2.8 + excessK * 0.15);
+        const counts = d.sharpe_histogram || [0, 1, 2, 4, 2, 1, 0, 0];
+        const maxC = Math.max(...counts, 1);
+        
+        // Dynamic horizontal boundaries covering data range, E[max], and candidate SR*
+        let minVal = (d && d.min_sharpe !== undefined) ? d.min_sharpe : -1.5;
+        let maxVal = (d && d.max_sharpe !== undefined) ? d.max_sharpe : 2.5;
+        
+        minVal = Math.min(minVal, m.reported_sharpe - 0.5, m.expected_max_noise_sharpe - 0.5);
+        maxVal = Math.max(maxVal, m.reported_sharpe + 0.5, m.expected_max_noise_sharpe + 0.5);
         const range = Math.max(maxVal - minVal, 0.01);
 
         const valToX = (v) => pad.left + ((v - minVal) / range) * plotW;
+        const countToY = (c) => pad.top + plotH - (c / maxC) * (plotH * 0.85);
 
-        // Generate high-resolution density curve reflecting kurtosis (fat tails) and skewness
-        const numCurvePoints = 120;
-        const curvePoints = [];
-        let maxDensity = 0;
+        // Draw histogram bars from C++ bins
+        const numBins = counts.length;
+        const binStep = plotW / numBins;
+        const barPad = 3;
 
-        const meanSR = 0.15;
-        const baseStd = 0.65;
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.lineWidth = 1;
 
-        for (let i = 0; i <= numCurvePoints; i++) {
-            const val = minVal + (i / numCurvePoints) * range;
-            const z = (val - meanSR) / baseStd;
-            
-            // Standard normal density
-            let density = Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
-            
-            // Apply Gram-Charlier / Edgeworth expansion for skewness and excess kurtosis
-            const z2 = z * z;
-            const z3 = z2 * z;
-            const z4 = z2 * z2;
-            const h3 = z3 - 3 * z;
-            const h4 = z4 - 6 * z2 + 3;
+        for (let i = 0; i < numBins; i++) {
+            const bx = pad.left + i * binStep + barPad;
+            const bw = Math.max(1, binStep - barPad * 2);
+            const by = countToY(counts[i]);
+            const bh = (pad.top + plotH) - by;
 
-            // Tail fattening: elevated probability in the tails |z| > 1.4 for high kurtosis
-            const tailBoost = (excessK > 0) ? (excessK * 0.045 * Math.pow(Math.abs(z), 1.6) / (1 + Math.exp(-Math.abs(z) + 1.2))) : 0;
-            const centerPeak = (excessK > 0) ? (excessK * 0.06 * Math.exp(-1.5 * z * z)) : 0;
-            
-            density = density * (1 + (skew / 6) * h3 + (excessK / 24) * h4) + tailBoost + centerPeak;
-            if (density < 0.005) density = 0.005;
-
-            if (density > maxDensity) maxDensity = density;
-            curvePoints.push({ val, density });
+            ctx.fillRect(bx, by, bw, bh);
+            ctx.strokeRect(bx, by, bw, bh);
         }
 
-        const countToY = (dens) => pad.top + plotH - (dens / Math.max(maxDensity, 0.001)) * (plotH * 0.88);
+        // Draw smooth density spline across bin midpoints
+        if (numBins >= 2) {
+            ctx.beginPath();
+            const firstX = pad.left + binStep * 0.5;
+            const firstY = countToY(counts[0]);
+            ctx.moveTo(firstX, firstY);
 
-        ctx.beginPath();
-        const startX = pad.left;
-        const startY = countToY(curvePoints[0].density);
-        ctx.moveTo(startX, pad.top + plotH);
-        ctx.lineTo(startX, startY);
+            for (let i = 0; i < numBins - 1; i++) {
+                const x1 = pad.left + (i + 0.5) * binStep;
+                const y1 = countToY(counts[i]);
+                const x2 = pad.left + (i + 1.5) * binStep;
+                const y2 = countToY(counts[i + 1]);
+                const xc = (x1 + x2) / 2;
+                const yc = (y1 + y2) / 2;
+                ctx.quadraticCurveTo(x1, y1, xc, yc);
+            }
+            const lastX = pad.left + (numBins - 0.5) * binStep;
+            const lastY = countToY(counts[numBins - 1]);
+            ctx.lineTo(lastX, lastY);
 
-        for (let i = 0; i < curvePoints.length - 1; i++) {
-            const pCurr = { x: valToX(curvePoints[i].val), y: countToY(curvePoints[i].density) };
-            const pNext = { x: valToX(curvePoints[i + 1].val), y: countToY(curvePoints[i + 1].density) };
-            const xc = (pCurr.x + pNext.x) / 2;
-            const yc = (pCurr.y + pNext.y) / 2;
-            ctx.quadraticCurveTo(pCurr.x, pCurr.y, xc, yc);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
         }
 
-        const lastP = curvePoints[curvePoints.length - 1];
-        ctx.lineTo(valToX(lastP.val), countToY(lastP.density));
-        ctx.lineTo(pad.left + plotW, pad.top + plotH);
-        ctx.closePath();
-
-        const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
-        grad.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
-        grad.addColorStop(1, 'rgba(56, 189, 248, 0.01)');
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
+        // EVT E[max] Threshold Line
         const evtX = valToX(m.expected_max_noise_sharpe);
         if (evtX >= pad.left && evtX <= w - pad.right) {
             ctx.strokeStyle = '#f59e0b';
@@ -305,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillText(`EVT E[max]=${Number(m.expected_max_noise_sharpe).toFixed(2)}`, evtX, pad.top - 10);
         }
 
+        // Candidate Strategy Sharpe Line (SR*)
         const srX = valToX(m.reported_sharpe);
         if (srX >= pad.left && srX <= w - pad.right) {
             ctx.strokeStyle = '#34d399';
@@ -320,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillText(`SR*=${Number(m.reported_sharpe).toFixed(2)}`, srX, pad.top + plotH + 22);
         }
 
+        // Axis labels
         ctx.fillStyle = '#94a3b8';
         ctx.font = '10px Inter, -apple-system, sans-serif';
         ctx.textAlign = 'left';
@@ -329,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawEmptyChart() {
+        if (!canvas || !ctx) return;
         const rect = canvas.getBoundingClientRect();
         const width = rect.width || 600;
         const height = 220;
@@ -356,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = '#64748b';
         ctx.font = '500 12px Inter, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Empirical distribution and EVT threshold will plot here after audit run', width / 2, height / 2 + 4);
+        ctx.fillText('Real empirical distribution from C++ Monte Carlo trials will plot here', width / 2, height / 2 + 4);
     }
 
     function drawCurrentChart() {
@@ -370,19 +399,24 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', drawCurrentChart);
 
     async function checkHealth() {
+        const base = getBackendUrl();
         try {
-            const res = await fetch('/health');
+            const res = await fetch(`${base}/health`);
             if (res.ok) {
                 const data = await res.json();
-                const statusEl = document.getElementById('system-status-text');
-                if (statusEl) statusEl.textContent = 'SYSTEM ONLINE';
+                if (terminalPill) {
+                    terminalPill.innerHTML = `<span class="badge-pulse" style="background:#22c55e;"></span><span>C++ ENGINE ONLINE (${data.version || 'v1.0'})</span>`;
+                }
+            } else {
+                throw new Error("Non-200");
             }
         } catch (e) {
-            const statusEl = document.getElementById('system-status-text');
-            if (statusEl) statusEl.textContent = 'SYSTEM ACTIVE (LOCAL)';
+            if (terminalPill) {
+                terminalPill.innerHTML = `<span class="badge-pulse" style="background:#ef4444;"></span><span>C++ BACKEND OFFLINE (CLICK TO SET URL)</span>`;
+            }
         }
     }
-    checkHealth();
 
+    checkHealth();
     drawEmptyChart();
 });

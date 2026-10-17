@@ -317,12 +317,6 @@ public:
             trials.push_back(std::move(t));
         }
 
-        // Anchor candidate strategy
-        if (!trials.empty()) {
-            trials[0].sharpe_ratio = reported_sharpe;
-            trials[0].rule_name = "Candidate_Strategy";
-        }
-
         return trials;
     }
 };
