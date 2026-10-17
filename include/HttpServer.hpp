@@ -12,6 +12,7 @@ typedef int socklen_t;
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 
 #define closesocket close
@@ -22,6 +23,8 @@ typedef int SOCKET;
 
 #include <atomic>
 #include <chrono>
+#include <ctime>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>

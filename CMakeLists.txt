@@ -12,9 +12,17 @@ else()
     add_compile_options(-O3 -Wall -Wextra -pthread)
 endif()
 
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+if(WIN32)
+    include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+else()
+    find_package(PostgreSQL REQUIRED)
+    include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${PostgreSQL_INCLUDE_DIRS}
+    )
+endif()
 
 set(SOURCES
     src/main.cpp
@@ -27,5 +35,5 @@ add_executable(dsr_engine ${SOURCES})
 if(WIN32)
     target_link_libraries(dsr_engine PRIVATE pq ws2_32 crypt32)
 else()
-    target_link_libraries(dsr_engine PRIVATE pq pthread)
+    target_link_libraries(dsr_engine PRIVATE ${PostgreSQL_LIBRARIES} pthread)
 endif()
